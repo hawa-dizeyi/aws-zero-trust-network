@@ -1,3 +1,8 @@
-aws_region  = "eu-west-1"
-env         = "dev"
-name_prefix = "zt"
+aws_region      = "eu-west-1"
+env             = "dev"
+name_prefix     = "zt"
+azs             = ["eu-west-1a", "eu-west-1b"]
+
+hub_vpc_cidr    = "10.0.0.0/16"
+spoke1_vpc_cidr = "10.1.0.0/16"
+spoke2_vpc_cidr = "10.2.0.0/16"
