@@ -1,6 +1,9 @@
 locals {
-  name_prefix = "${var.project_name}-${var.env}"
-  azs         = slice(data.aws_availability_zones.available.names, 0, 2)
-}
+  project = "aws-zero-trust-network"
 
-data "aws_availability_zones" "available" {}
+  tags = {
+    Project   = local.project
+    Owner     = "hawa-dizeyi"
+    ManagedBy = "Terraform"
+  }
+}
