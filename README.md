@@ -161,6 +161,16 @@ After applying the current phase, the following should be true:
 - No public subnets exist in spoke VPCs
 - All resources are tagged and traceable to Terraform
 
+### Visual verification
+
+Screenshots below are included as verification that the deployed
+infrastructure matches the described architecture.
+
+- VPC layout and subnet tiers
+- Absence of internet access in spoke VPCs
+
+See: `docs/screenshots/phase-3-vpc-foundation/`
+
 ---
 
 ## Next steps
