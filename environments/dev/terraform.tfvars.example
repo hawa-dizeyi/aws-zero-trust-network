@@ -1,0 +1,7 @@
+project_name = "zero-trust"
+env          = "dev"
+aws_region   = "eu-west-1"
+
+vpc_cidr_inspection = "10.0.0.0/16"
+vpc_cidr_egress     = "10.1.0.0/16"
+vpc_cidr_spoke      = "10.2.0.0/16"
