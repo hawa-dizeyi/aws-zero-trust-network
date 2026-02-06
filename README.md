@@ -100,7 +100,7 @@ This confirmed:
 
 ## Current state — VPC foundation
 
-At this stage, only the **VPC layer** is deployed.
+At this stage, the **network foundation and core connectivity** are deployed.
 
 ### Hub VPC
 
@@ -122,16 +122,32 @@ At this stage, only the **VPC layer** is deployed.
 - Subnet tiers:
   - Private
   - Transit Gateway attachment
-- No default route to the internet
+- No direct internet access
+
+---
+
+### Update — Transit Gateway added
+
+A Transit Gateway has been introduced to connect the hub and spoke VPCs.
+
+- Hub and spoke VPCs are attached to a single TGW
+- Spoke default routes now point to the TGW
+- Traffic is routed centrally, but no inspection or egress control is enforced yet
+
+This phase establishes controlled connectivity without changing the security
+posture of the environment.
+
+---
 
 ### General notes
 
 - All CIDRs and subnets are deterministic
 - All resources are Terraform-managed
-- No routing between VPCs yet
-- No security enforcement yet
+- Spokes do not have direct internet access
+- Security enforcement is not enabled yet
 
-This is intentional. The goal is to validate the network layout before adding routing and inspection.
+This staging is intentional. The goal is to validate topology and routing
+before inserting inspection and policy enforcement.
 
 ---
 
@@ -139,15 +155,15 @@ This is intentional. The goal is to validate the network layout before adding ro
 
 The following will be added in later phases:
 
-- Transit Gateway
-- Inter-VPC routing
 - Centralized inspection with AWS Network Firewall
+- Inter-VPC traffic inspection
 - VPC endpoints (SSM, EC2 messages, logs, S3)
 - EC2 instances
 - SSM-only access model
 - Zero-trust policy enforcement
 
-Each of these will be introduced separately to keep changes easy to reason about.
+Each of these will be introduced separately to keep changes easy to reason about
+and easy to validate.
 
 ---
 
@@ -157,28 +173,37 @@ After applying the current phase, the following should be true:
 
 - Hub VPC has an IGW and NAT Gateway
 - Spoke VPCs have no IGW
-- Spoke route tables do not have a `0.0.0.0/0` route
+- Spoke route tables forward traffic to the TGW
 - No public subnets exist in spoke VPCs
 - All resources are tagged and traceable to Terraform
 
-### Visual verification
+---
 
-Screenshots below are included as verification that the deployed
-infrastructure matches the described architecture.
+## Visual verification
 
-- VPC layout and subnet tiers
+Console screenshots are included to verify that the deployed infrastructure
+matches the described architecture.
+
+- Hub-and-spoke VPC layout
+- Subnet tier separation
 - Absence of internet access in spoke VPCs
+- TGW attachments and routing
 
-See: `docs/screenshots/phase-3-vpc-foundation/`
+See:
+- `docs/screenshots/phase-3-vpc-foundation/`
+- `docs/screenshots/phase-4-tgw/`
 
 ---
 
 ## Next steps
 
-The next phase introduces the **Transit Gateway**, attaches the hub and spokes,
-and establishes controlled routing — still without inspection.
+The next phase introduces **centralized inspection**:
 
-From there, inspection, endpoints, and workloads are layered on incrementally.
+- AWS Network Firewall deployment
+- Traffic steering from TGW into firewall endpoints
+- Controlled egress via NAT Gateway
+
+After that, PrivateLink endpoints and SSM-only workloads will be added.
 
 ---
 
