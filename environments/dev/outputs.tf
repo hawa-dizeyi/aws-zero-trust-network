@@ -13,3 +13,7 @@ output "spoke2_vpc_id" {
 output "hub_subnets" {
   value = module.hub_vpc.subnet_ids
 }
+
+output "tgw_id" {
+  value = module.tgw.tgw_id
+}

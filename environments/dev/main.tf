@@ -86,3 +86,41 @@ module "spoke2_vpc" {
   enable_nat_gw = false
   tags          = merge(local.tags, { Role = "spoke2" })
 }
+
+# TGW
+module "tgw" {
+  source = "../../modules/tgw"
+  name   = "${var.name_prefix}-${var.env}-tgw"
+
+  hub = {
+    vpc_id     = module.hub_vpc.vpc_id
+    subnet_ids = module.hub_vpc.subnet_ids["tgw"]
+  }
+
+  spokes = {
+    spoke1 = {
+      vpc_id     = module.spoke1_vpc.vpc_id
+      subnet_ids = module.spoke1_vpc.subnet_ids["tgw"]
+    }
+    spoke2 = {
+      vpc_id     = module.spoke2_vpc.vpc_id
+      subnet_ids = module.spoke2_vpc.subnet_ids["tgw"]
+    }
+  }
+
+  tags = local.tags
+}
+
+# Spoke traffic goes to the hub via TGW.
+# No direct internet access from spokes.
+resource "aws_route" "spoke1_default_to_tgw" {
+  route_table_id         = module.spoke1_vpc.route_table_ids["private"]
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+resource "aws_route" "spoke2_default_to_tgw" {
+  route_table_id         = module.spoke2_vpc.route_table_ids["private"]
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = module.tgw.tgw_id
+}
