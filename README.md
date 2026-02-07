@@ -60,13 +60,22 @@ No environment variables are required.
 ~~~
 aws-zero-trust-network/
 ├── environments/
-│   └── dev/                # Environment-level wiring
+│   └── dev/                     # Environment-level wiring
+│
 ├── modules/
-│   ├── vpc/                # VPC with tiered subnets
-│   ├── tgw/                # Transit Gateway (later phase)
-│   ├── network_firewall/   # Central inspection (later phase)
-│   ├── vpc_endpoints/      # PrivateLink endpoints (later phase)
-│   └── ec2_ssm/            # SSM-only compute (later phase)
+│   ├── vpc/                     # VPC with tiered subnets
+│   ├── tgw/                     # Transit Gateway
+│   ├── network_firewall/        # Central inspection and firewall policies
+│   ├── vpc_endpoints/           # PrivateLink endpoints
+│   └── ec2_ssm/                 # SSM-only compute
+│
+├── docs/
+│   └── screenshots/
+│       ├── phase-3-vpc-foundation/   # VPCs, subnets, no-IGW spokes
+│       ├── phase-4-tgw/              # TGW attachments and spoke routing
+│       ├── phase-5-firewall/         # Firewall insertion and routing
+│       └── phase-6-zero-trust/       # Zero-trust firewall policy and rules
+│
 ├── providers.tf
 ├── versions.tf
 ├── locals.tf
@@ -154,6 +163,11 @@ Firewall rules are now locked down with a default-deny approach.
 - Default deny for everything else
 - This is intentionally minimal and will be expanded only when workloads require it
 
+Console screenshots for this phase focus on firewall policy and rule validation,
+rather than routing, which was verified in the previous phase.
+
+See: `docs/screenshots/phase-6-zero-trust/`
+
 ---
 
 ### General notes
@@ -218,6 +232,7 @@ See:
 - `docs/screenshots/phase-3-vpc-foundation/`
 - `docs/screenshots/phase-4-tgw/`
 - `docs/screenshots/phase-5-firewall/`
+- `docs/screenshots/phase-6-zero-trust/`
 
 ---
 
