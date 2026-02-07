@@ -128,14 +128,26 @@ At this stage, the **network foundation and core connectivity** are deployed.
 
 ### Update — Transit Gateway added
 
-A Transit Gateway has been introduced to connect the hub and spoke VPCs.
+A Transit Gateway connects the hub and spoke VPCs.
 
 - Hub and spoke VPCs are attached to a single TGW
-- Spoke default routes now point to the TGW
-- Traffic is routed centrally, but no inspection or egress control is enforced yet
+- Spoke default routes point to the TGW
+- Connectivity is established, but traffic inspection is introduced separately
 
-This phase establishes controlled connectivity without changing the security
-posture of the environment.
+---
+
+### Update — Network Firewall inserted (in-path)
+
+Network Firewall is now deployed in the hub and inserted into the routing path.
+
+- Traffic arriving from the TGW is steered into the firewall
+- Internet-bound traffic exits via NAT after inspection
+- Return routes from the firewall subnets back to spokes are in place
+
+For this phase the firewall policy is intentionally permissive (allow-all) to
+prove routing and in-path inspection before tightening rules.
+
+See: `docs/screenshots/phase-5-firewall/`
 
 ---
 
@@ -144,10 +156,11 @@ posture of the environment.
 - All CIDRs and subnets are deterministic
 - All resources are Terraform-managed
 - Spokes do not have direct internet access
-- Security enforcement is not enabled yet
+- Hub-and-spoke routing is established via TGW
+- Security enforcement is present but not yet restrictive
 
-This staging is intentional. The goal is to validate topology and routing
-before inserting inspection and policy enforcement.
+This staging is intentional. The goal is to validate topology, routing, and
+traffic flow before introducing stricter security controls.
 
 ---
 
@@ -155,12 +168,12 @@ before inserting inspection and policy enforcement.
 
 The following will be added in later phases:
 
-- Centralized inspection with AWS Network Firewall
-- Inter-VPC traffic inspection
+- Restrictive Network Firewall rules (deny/allow policies)
+- Controlled east-west traffic policies (spoke-to-spoke via inspection)
 - VPC endpoints (SSM, EC2 messages, logs, S3)
 - EC2 instances
 - SSM-only access model
-- Zero-trust policy enforcement
+- Zero-trust policy enforcement at workload level
 
 Each of these will be introduced separately to keep changes easy to reason about
 and easy to validate.
@@ -174,6 +187,10 @@ After applying the current phase, the following should be true:
 - Hub VPC has an IGW and NAT Gateway
 - Spoke VPCs have no IGW
 - Spoke route tables forward traffic to the TGW
+- Hub TGW route table forwards `0.0.0.0/0` to a Network Firewall endpoint
+- Hub firewall route table includes:
+  - `0.0.0.0/0` → NAT Gateway
+  - spoke CIDRs → Transit Gateway
 - No public subnets exist in spoke VPCs
 - All resources are tagged and traceable to Terraform
 
@@ -188,22 +205,24 @@ matches the described architecture.
 - Subnet tier separation
 - Absence of internet access in spoke VPCs
 - TGW attachments and routing
+- Network Firewall insertion and routing
 
 See:
 - `docs/screenshots/phase-3-vpc-foundation/`
 - `docs/screenshots/phase-4-tgw/`
+- `docs/screenshots/phase-5-firewall/`
 
 ---
 
 ## Next steps
 
-The next phase introduces **centralized inspection**:
+The next phase focuses on removing internet dependency from workloads:
 
-- AWS Network Firewall deployment
-- Traffic steering from TGW into firewall endpoints
-- Controlled egress via NAT Gateway
+- Add PrivateLink (VPC endpoints) for SSM and required AWS services
+- Prepare for SSM-only access to instances (no inbound access, no public IPs)
 
-After that, PrivateLink endpoints and SSM-only workloads will be added.
+After that, private EC2 workloads will be deployed and validated using
+AWS Systems Manager Session Manager.
 
 ---
 
@@ -213,3 +232,4 @@ After that, PrivateLink endpoints and SSM-only workloads will be added.
 - Routing should exist before inspection, not the other way around
 - Small Terraform applies are easier to review and safer to operate
 - Explicit non-goals reduce confusion later
+
