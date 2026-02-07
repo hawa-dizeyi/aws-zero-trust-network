@@ -17,3 +17,7 @@ output "hub_subnets" {
 output "tgw_id" {
   value = module.tgw.tgw_id
 }
+
+output "network_firewall_arn" {
+  value = module.network_firewall.firewall_arn
+}

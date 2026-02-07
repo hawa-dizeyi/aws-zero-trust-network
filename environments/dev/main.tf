@@ -124,3 +124,41 @@ resource "aws_route" "spoke2_default_to_tgw" {
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = module.tgw.tgw_id
 }
+
+module "network_firewall" {
+  source = "../../modules/network_firewall"
+
+  name                = "${var.name_prefix}-${var.env}-nfw"
+  vpc_id              = module.hub_vpc.vpc_id
+  firewall_subnet_ids = module.hub_vpc.subnet_ids["firewall"]
+
+  tags = local.tags
+}
+
+# Hub TGW subnets share one route table in our setup.
+# Default route from the TGW tier goes to the Network Firewall endpoint (in-path inspection).
+resource "aws_route" "hub_tgw_default_to_firewall" {
+  route_table_id         = module.hub_vpc.route_table_ids["tgw"]
+  destination_cidr_block = "0.0.0.0/0"
+  vpc_endpoint_id        = module.network_firewall.firewall_endpoints_by_az[var.azs[0]]
+}
+
+# After inspection, send internet-bound traffic to NAT (hub egress).
+resource "aws_route" "hub_firewall_to_nat" {
+  route_table_id         = module.hub_vpc.route_table_ids["firewall"]
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = module.hub_vpc.nat_gateway_ids[0]
+}
+
+# Return path: traffic destined to spokes goes back to TGW.
+resource "aws_route" "hub_firewall_to_spoke1" {
+  route_table_id         = module.hub_vpc.route_table_ids["firewall"]
+  destination_cidr_block = var.spoke1_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+resource "aws_route" "hub_firewall_to_spoke2" {
+  route_table_id         = module.hub_vpc.route_table_ids["firewall"]
+  destination_cidr_block = var.spoke2_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
