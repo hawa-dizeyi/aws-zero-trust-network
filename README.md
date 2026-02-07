@@ -138,16 +138,21 @@ A Transit Gateway connects the hub and spoke VPCs.
 
 ### Update — Network Firewall inserted (in-path)
 
-Network Firewall is now deployed in the hub and inserted into the routing path.
+Network Firewall is deployed in the hub and inserted into the routing path.
 
 - Traffic arriving from the TGW is steered into the firewall
 - Internet-bound traffic exits via NAT after inspection
 - Return routes from the firewall subnets back to spokes are in place
 
-For this phase the firewall policy is intentionally permissive (allow-all) to
-prove routing and in-path inspection before tightening rules.
-
 See: `docs/screenshots/phase-5-firewall/`
+
+### Update — Firewall rules tightened (zero-trust baseline)
+
+Firewall rules are now locked down with a default-deny approach.
+
+- Explicit allow: DNS (53), HTTPS (443), NTP (123)
+- Default deny for everything else
+- This is intentionally minimal and will be expanded only when workloads require it
 
 ---
 
@@ -157,7 +162,7 @@ See: `docs/screenshots/phase-5-firewall/`
 - All resources are Terraform-managed
 - Spokes do not have direct internet access
 - Hub-and-spoke routing is established via TGW
-- Security enforcement is present but not yet restrictive
+- Security enforcement is enabled (default deny with explicit allow rules)
 
 This staging is intentional. The goal is to validate topology, routing, and
 traffic flow before introducing stricter security controls.
@@ -168,12 +173,12 @@ traffic flow before introducing stricter security controls.
 
 The following will be added in later phases:
 
-- Restrictive Network Firewall rules (deny/allow policies)
-- Controlled east-west traffic policies (spoke-to-spoke via inspection)
-- VPC endpoints (SSM, EC2 messages, logs, S3)
+- Additional firewall rules as workloads are introduced (tighter egress, app/domain controls if needed)
+- Controlled east-west policies (spoke-to-spoke via inspection)
+- VPC endpoints (SSM, EC2 messages, logs, S3) to reduce NAT dependency
 - EC2 instances
-- SSM-only access model
-- Zero-trust policy enforcement at workload level
+- SSM-only access model (no inbound access, no public IPs)
+- Workload-level zero-trust enforcement (least privilege + segmentation)
 
 Each of these will be introduced separately to keep changes easy to reason about
 and easy to validate.
@@ -192,6 +197,8 @@ After applying the current phase, the following should be true:
   - `0.0.0.0/0` → NAT Gateway
   - spoke CIDRs → Transit Gateway
 - No public subnets exist in spoke VPCs
+- Firewall policy enforces a default deny posture
+- Only DNS/HTTPS/NTP are allowed outbound at this stage
 - All resources are tagged and traceable to Terraform
 
 ---
@@ -216,13 +223,13 @@ See:
 
 ## Next steps
 
-The next phase focuses on removing internet dependency from workloads:
+Next phase focuses on removing internet dependency from workloads:
 
 - Add PrivateLink (VPC endpoints) for SSM and required AWS services
-- Prepare for SSM-only access to instances (no inbound access, no public IPs)
+- Reduce NAT usage by keeping AWS service traffic private
 
 After that, private EC2 workloads will be deployed and validated using
-AWS Systems Manager Session Manager.
+AWS Systems Manager Session Manager (SSM-only access, no inbound connectivity).
 
 ---
 
