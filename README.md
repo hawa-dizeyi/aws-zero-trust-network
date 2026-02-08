@@ -168,6 +168,17 @@ rather than routing, which was verified in the previous phase.
 
 See: `docs/screenshots/phase-6-zero-trust/`
 
+### Update — PrivateLink endpoints + SSM-only access (no inbound)
+
+SSM access is enabled without internet or inbound connectivity.
+
+- Interface endpoints are deployed in workload VPCs to support Private DNS resolution
+- Hub remains responsible for inspection and controlled egress
+- A private EC2 instance runs with no public IP and no inbound rules
+- Access is validated using SSM Session Manager only
+
+See: `docs/screenshots/phase-7-privatelink-ssm/`
+
 ---
 
 ### General notes

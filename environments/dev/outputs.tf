@@ -21,3 +21,15 @@ output "tgw_id" {
 output "network_firewall_arn" {
   value = module.network_firewall.firewall_arn
 }
+
+output "hub_vpce_ids" {
+  value = module.hub_endpoints.endpoint_ids
+}
+
+output "spoke1_ssm_instance_id" {
+  value = module.spoke1_ssm_instance.instance_id
+}
+
+output "spoke1_vpce_ids" {
+  value = module.spoke1_endpoints.endpoint_ids
+}

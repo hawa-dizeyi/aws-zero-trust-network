@@ -162,3 +162,50 @@ resource "aws_route" "hub_firewall_to_spoke2" {
   destination_cidr_block = var.spoke2_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
 }
+
+module "hub_endpoints" {
+  source = "../../modules/vpc_endpoints"
+
+  name       = "${var.name_prefix}-${var.env}-hub"
+  vpc_id     = module.hub_vpc.vpc_id
+  subnet_ids = module.hub_vpc.subnet_ids["private"]
+
+  allowed_cidr_blocks = [
+    var.hub_vpc_cidr,
+    var.spoke1_vpc_cidr,
+    var.spoke2_vpc_cidr,
+  ]
+
+  tags = local.tags
+}
+
+module "spoke1_endpoints" {
+  source = "../../modules/vpc_endpoints"
+
+  name       = "${var.name_prefix}-${var.env}-spoke1"
+  vpc_id     = module.spoke1_vpc.vpc_id
+  subnet_ids = module.spoke1_vpc.subnet_ids["private"]
+
+  # Only Spoke1 needs to reach these endpoints (keep it tight)
+  allowed_cidr_blocks = [var.spoke1_vpc_cidr]
+
+  tags = local.tags
+}
+
+# Spoke 1 — private EC2 instance with SSM-only access (no inbound, no public IP)
+module "spoke1_ssm_instance" {
+  source = "../../modules/ec2_ssm"
+
+  name      = "${var.name_prefix}-${var.env}-spoke1-ssm"
+  vpc_id    = module.spoke1_vpc.vpc_id
+  subnet_id = module.spoke1_vpc.subnet_ids["private"][0]
+
+  # Allow egress only to known internal CIDRs (hub endpoints + DNS paths)
+  allowed_egress_cidr_blocks = [
+    var.hub_vpc_cidr,
+    var.spoke1_vpc_cidr,
+    var.spoke2_vpc_cidr,
+  ]
+
+  tags = local.tags
+}
