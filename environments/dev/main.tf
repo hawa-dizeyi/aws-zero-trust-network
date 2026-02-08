@@ -131,6 +131,7 @@ module "network_firewall" {
   name                = "${var.name_prefix}-${var.env}-nfw"
   vpc_id              = module.hub_vpc.vpc_id
   firewall_subnet_ids = module.hub_vpc.subnet_ids["firewall"]
+  enable_logging      = true
 
   tags = local.tags
 }

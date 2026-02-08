@@ -179,6 +179,15 @@ SSM access is enabled without internet or inbound connectivity.
 
 See: `docs/screenshots/phase-7-privatelink-ssm/`
 
+### Update — Observability (Network Firewall logging)
+
+Network Firewall logs are now sent to CloudWatch Logs for audit and troubleshooting.
+
+- Flow logs and alert logs are enabled
+- Logs are retained for a short period (cost-aware)
+
+See: `docs/screenshots/phase-8-observability/`
+
 ---
 
 ### General notes

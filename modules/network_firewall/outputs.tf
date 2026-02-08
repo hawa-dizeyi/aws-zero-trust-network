@@ -9,3 +9,8 @@ output "firewall_endpoints_by_az" {
     s.availability_zone => s.attachment[0].endpoint_id
   }
 }
+
+output "log_group_name" {
+  value       = try(aws_cloudwatch_log_group.nfw[0].name, null)
+  description = "CloudWatch Log Group receiving NFW logs"
+}

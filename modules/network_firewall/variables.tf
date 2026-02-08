@@ -7,3 +7,8 @@ variable "firewall_subnet_ids" {
 }
 
 variable "tags" { type = map(string) }
+
+variable "enable_logging" {
+  type    = bool
+  default = true
+}

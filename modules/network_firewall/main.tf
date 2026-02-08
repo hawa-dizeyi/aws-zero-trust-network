@@ -66,3 +66,39 @@ resource "aws_networkfirewall_firewall" "this" {
 
   tags = merge(var.tags, { Name = var.name })
 }
+
+# CloudWatch log group for Network Firewall logs (flow + alert).
+resource "aws_cloudwatch_log_group" "nfw" {
+  count = var.enable_logging ? 1 : 0
+
+  name              = "/aws/network-firewall/${var.name}"
+  retention_in_days = 7
+
+  tags = var.tags
+}
+
+resource "aws_networkfirewall_logging_configuration" "this" {
+  count = var.enable_logging ? 1 : 0
+
+  firewall_arn = aws_networkfirewall_firewall.this.arn
+
+  logging_configuration {
+    log_destination_config {
+      log_destination = {
+        logGroup = aws_cloudwatch_log_group.nfw[0].name
+      }
+      log_destination_type = "CloudWatchLogs"
+      log_type             = "FLOW"
+    }
+
+    log_destination_config {
+      log_destination = {
+        logGroup = aws_cloudwatch_log_group.nfw[0].name
+      }
+      log_destination_type = "CloudWatchLogs"
+      log_type             = "ALERT"
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.nfw]
+}
