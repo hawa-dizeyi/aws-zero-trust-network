@@ -108,6 +108,11 @@ module "tgw" {
     }
   }
 
+  spoke_cidrs = {
+    spoke1 = var.spoke1_vpc_cidr
+    spoke2 = var.spoke2_vpc_cidr
+  }
+
   tags = local.tags
 }
 

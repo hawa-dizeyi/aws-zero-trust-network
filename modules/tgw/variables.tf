@@ -14,3 +14,8 @@ variable "spokes" {
     subnet_ids = list(string)
   }))
 }
+
+variable "spoke_cidrs" {
+  type        = map(string)
+  description = "Map of spoke key -> spoke VPC CIDR (used for TGW return routes)"
+}

@@ -1,6 +1,9 @@
 # Zero-trust baseline:
 # allow only what we need, drop everything else.
-# We'll expand this later when workloads are added.
+
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_networkfirewall_rule_group" "stateful_zero_trust" {
   capacity = 100
@@ -77,6 +80,39 @@ resource "aws_cloudwatch_log_group" "nfw" {
   tags = var.tags
 }
 
+resource "aws_cloudwatch_log_resource_policy" "nfw" {
+  count = var.enable_logging ? 1 : 0
+
+  policy_name = "${var.name}-nfw-logs-policy"
+
+  policy_document = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowNetworkFirewallToWriteLogs",
+        Effect = "Allow",
+        Principal = {
+          Service = "network-firewall.amazonaws.com"
+        },
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ],
+        Resource = "*",
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          },
+          ArnLike = {
+            "aws:SourceArn" = aws_networkfirewall_firewall.this.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_networkfirewall_logging_configuration" "this" {
   count = var.enable_logging ? 1 : 0
 
@@ -100,5 +136,8 @@ resource "aws_networkfirewall_logging_configuration" "this" {
     }
   }
 
-  depends_on = [aws_cloudwatch_log_group.nfw]
+  depends_on = [
+  aws_cloudwatch_log_group.nfw,
+  aws_cloudwatch_log_resource_policy.nfw
+]
 }
