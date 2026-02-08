@@ -4,7 +4,7 @@ This project builds a **zero-trust–ready network foundation on AWS** using Ter
 
 The focus is on **network design first**: clear boundaries, no implicit trust, no public access to workloads, and a structure that can safely grow without rework later.
 
-The infrastructure is built in **small, verifiable phases**, similar to how production AWS environments are usually rolled out.
+The infrastructure is built in **small, verifiable phases**, closely reflecting how production AWS environments are typically designed, reviewed, and rolled out.
 
 ---
 
@@ -18,7 +18,7 @@ The goal is to design a network that:
 - Avoids ad-hoc or manual configuration
 - Is fully reproducible using Terraform
 
-This is not a demo or lab-style setup. It’s intentionally structured to reflect how a real environment would be designed, reviewed, and expanded over time.
+This is not a demo or throwaway lab. It is intentionally structured to mirror real-world cloud network architecture and operational decision-making.
 
 ---
 
@@ -43,14 +43,14 @@ aws --profile zero-trust configure get region
 
 ## AWS authentication
 
-Terraform uses a single, explicit AWS CLI profile (zero-trust).
+Terraform uses a single, explicit AWS CLI profile (`zero-trust`).
 
 This is deliberate:
 - avoids accidentally running Terraform against the wrong account
 - avoids shared or long-lived admin profiles
-- keeps local credentials predictable
+- keeps local credentials predictable and auditable
 
-Terraform is pinned to this profile in: environments/dev/providers.tf
+Terraform is pinned to this profile in `environments/dev/providers.tf`.  
 No environment variables are required.
 
 ---
@@ -64,17 +64,20 @@ aws-zero-trust-network/
 │
 ├── modules/
 │   ├── vpc/                     # VPC with tiered subnets
-│   ├── tgw/                     # Transit Gateway
+│   ├── tgw/                     # Transit Gateway and routing
 │   ├── network_firewall/        # Central inspection and firewall policies
 │   ├── vpc_endpoints/           # PrivateLink endpoints
 │   └── ec2_ssm/                 # SSM-only compute
 │
 ├── docs/
 │   └── screenshots/
-│       ├── phase-3-vpc-foundation/   # VPCs, subnets, no-IGW spokes
-│       ├── phase-4-tgw/              # TGW attachments and spoke routing
-│       ├── phase-5-firewall/         # Firewall insertion and routing
-│       └── phase-6-zero-trust/       # Zero-trust firewall policy and rules
+│       ├── phase-3-vpc-foundation/
+│       ├── phase-4-tgw/
+│       ├── phase-5-firewall/
+│       ├── phase-6-zero-trust/
+│       ├── phase-7-privatelink-ssm/
+│       ├── phase-8-observability/
+│       └── phase-9-proof-tests/
 │
 ├── providers.tf
 ├── versions.tf
@@ -83,9 +86,9 @@ aws-zero-trust-network/
 ~~~
 
 The structure is intentionally modular so that:
-environments stay thin
-networking logic is reusable
-changes are easy to review
+- environments stay thin
+- networking logic is reusable
+- changes are easy to review and reason about
 
 ---
 
@@ -107,21 +110,20 @@ This confirmed:
 
 ---
 
-## Current state — VPC foundation
+## Current state — Network foundation and enforcement
 
-At this stage, the **network foundation and core connectivity** are deployed.
+At this stage, the **network foundation, routing, inspection, and access controls** are fully deployed and validated.
 
 ### Hub VPC
 
-- Acts as the future inspection and egress hub
-- Includes subnet tiers for:
+- Acts as the centralized inspection and egress hub
+- Subnet tiers:
   - Public (NAT Gateway only)
   - Private
   - Transit Gateway attachment
-  - Network Firewall (reserved)
-- Has an Internet Gateway
-- Has a NAT Gateway
-- No workloads are deployed here
+  - Network Firewall
+- Has an Internet Gateway and NAT Gateway
+- No workloads are deployed in the hub
 
 ### Spoke VPCs (2)
 
@@ -135,143 +137,121 @@ At this stage, the **network foundation and core connectivity** are deployed.
 
 ---
 
-### Update — Transit Gateway added
+### Update — Transit Gateway
 
 A Transit Gateway connects the hub and spoke VPCs.
 
-- Hub and spoke VPCs are attached to a single TGW
+- Hub and spokes are attached to a single TGW
 - Spoke default routes point to the TGW
-- Connectivity is established, but traffic inspection is introduced separately
+- TGW routing is explicitly controlled via a dedicated route table
+
+See: `docs/screenshots/phase-4-tgw/`
 
 ---
 
-### Update — Network Firewall inserted (in-path)
+### Update — Network Firewall (in-path)
 
-Network Firewall is deployed in the hub and inserted into the routing path.
+Network Firewall is deployed in the hub and inserted directly into the traffic path.
 
 - Traffic arriving from the TGW is steered into the firewall
-- Internet-bound traffic exits via NAT after inspection
-- Return routes from the firewall subnets back to spokes are in place
+- Internet-bound traffic exits via NAT **after inspection**
+- Return routes from firewall subnets back to spokes are in place
 
 See: `docs/screenshots/phase-5-firewall/`
 
-### Update — Firewall rules tightened (zero-trust baseline)
+---
 
-Firewall rules are now locked down with a default-deny approach.
+### Update — Zero-trust firewall baseline
 
-- Explicit allow: DNS (53), HTTPS (443), NTP (123)
-- Default deny for everything else
-- This is intentionally minimal and will be expanded only when workloads require it
+Firewall rules enforce a strict zero-trust posture.
 
-Console screenshots for this phase focus on firewall policy and rule validation,
-rather than routing, which was verified in the previous phase.
+- Explicit allow:
+  - DNS (53)
+  - HTTPS (443)
+  - NTP (123)
+- Default deny for all other traffic
+- No implicit or broad internet access
 
 See: `docs/screenshots/phase-6-zero-trust/`
 
-### Update — PrivateLink endpoints + SSM-only access (no inbound)
+---
 
-SSM access is enabled without internet or inbound connectivity.
+### Update — PrivateLink + SSM-only access (no inbound)
 
-- Interface endpoints are deployed in workload VPCs to support Private DNS resolution
+Workload access is enabled without inbound connectivity.
+
+- Interface endpoints are deployed in workload VPCs for Private DNS resolution
 - Hub remains responsible for inspection and controlled egress
-- A private EC2 instance runs with no public IP and no inbound rules
-- Access is validated using SSM Session Manager only
+- A private EC2 instance runs with:
+  - no public IP
+  - no inbound rules
+- Access is validated using **SSM Session Manager only**
 
 See: `docs/screenshots/phase-7-privatelink-ssm/`
 
-### Update — Observability (Network Firewall logging)
+---
 
-Network Firewall logs are now sent to CloudWatch Logs for audit and troubleshooting.
+### Update — Observability
 
-- Flow logs and alert logs are enabled
-- Logs are retained for a short period (cost-aware)
+Network Firewall logs are sent to CloudWatch Logs.
+
+- Flow and alert logs are enabled
+- Log streams are created dynamically as traffic flows
+- Short retention is used for cost awareness
 
 See: `docs/screenshots/phase-8-observability/`
 
 ---
 
-### General notes
+### Update — Proof tests and inspection validation
 
-- All CIDRs and subnets are deterministic
-- All resources are Terraform-managed
-- Spokes do not have direct internet access
-- Hub-and-spoke routing is established via TGW
-- Security enforcement is enabled (default deny with explicit allow rules)
+Traffic from a private EC2 instance was tested through the full inspection path.
 
-This staging is intentional. The goal is to validate topology, routing, and
-traffic flow before introducing stricter security controls.
+- DNS resolution is permitted
+- HTTPS egress to required AWS services is allowed
+- IP-based and non-essential outbound traffic is blocked
+- Network Firewall logs confirm inspected and denied flows
 
----
-
-## What is intentionally not deployed yet
-
-The following will be added in later phases:
-
-- Additional firewall rules as workloads are introduced (tighter egress, app/domain controls if needed)
-- Controlled east-west policies (spoke-to-spoke via inspection)
-- VPC endpoints (SSM, EC2 messages, logs, S3) to reduce NAT dependency
-- EC2 instances
-- SSM-only access model (no inbound access, no public IPs)
-- Workload-level zero-trust enforcement (least privilege + segmentation)
-
-Each of these will be introduced separately to keep changes easy to reason about
-and easy to validate.
+See: `docs/screenshots/phase-9-proof-tests/`
 
 ---
 
 ## Validation checks
 
-After applying the current phase, the following should be true:
+After all phases, the following are true:
 
-- Hub VPC has an IGW and NAT Gateway
+- Hub VPC has IGW and NAT Gateway
 - Spoke VPCs have no IGW
 - Spoke route tables forward traffic to the TGW
-- Hub TGW route table forwards `0.0.0.0/0` to a Network Firewall endpoint
-- Hub firewall route table includes:
+- TGW forwards `0.0.0.0/0` to the hub attachment
+- Hub TGW route tables steer traffic into Network Firewall endpoints
+- Firewall route tables forward:
   - `0.0.0.0/0` → NAT Gateway
   - spoke CIDRs → Transit Gateway
 - No public subnets exist in spoke VPCs
-- Firewall policy enforces a default deny posture
-- Only DNS/HTTPS/NTP are allowed outbound at this stage
-- All resources are tagged and traceable to Terraform
+- Firewall policy enforces default deny
+- Only explicitly allowed traffic exits the network
+- All resources are tagged and fully Terraform-managed
 
 ---
 
-## Visual verification
+## Engineering notes
 
-Console screenshots are included to verify that the deployed infrastructure
-matches the described architecture.
-
-- Hub-and-spoke VPC layout
-- Subnet tier separation
-- Absence of internet access in spoke VPCs
-- TGW attachments and routing
-- Network Firewall insertion and routing
-
-See:
-- `docs/screenshots/phase-3-vpc-foundation/`
-- `docs/screenshots/phase-4-tgw/`
-- `docs/screenshots/phase-5-firewall/`
-- `docs/screenshots/phase-6-zero-trust/`
+- Zero-trust starts with **network boundaries and routing**
+- Inspection must be **in-path**, not optional
+- Default deny is safer than incremental deny
+- IP-based egress is intentionally blocked to prevent policy bypass
+- Small, phased Terraform applies are easier to review and safer to operate
 
 ---
 
-## Next steps
+## Teardown
 
-Next phase focuses on removing internet dependency from workloads:
+This environment is intentionally designed to be **destroyed cleanly** after validation.
 
-- Add PrivateLink (VPC endpoints) for SSM and required AWS services
-- Reduce NAT usage by keeping AWS service traffic private
+~~~
+cd environments/dev
+terraform destroy
+~~~
 
-After that, private EC2 workloads will be deployed and validated using
-AWS Systems Manager Session Manager (SSM-only access, no inbound connectivity).
-
----
-
-## Notes from an engineering perspective
-
-- Zero-trust starts with network boundaries
-- Routing should exist before inspection, not the other way around
-- Small Terraform applies are easier to review and safer to operate
-- Explicit non-goals reduce confusion later
-
+This removes all billable resources (NAT Gateway, Network Firewall, TGW) to avoid unnecessary cost.
