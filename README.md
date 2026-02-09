@@ -1,4 +1,4 @@
-# Project 04 — Zero-Trust AWS Network
+# Project 03 — Zero-Trust AWS Network
 
 This project builds a **zero-trust–ready network foundation on AWS** using Terraform.
 
